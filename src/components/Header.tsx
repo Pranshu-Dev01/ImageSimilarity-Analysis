@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Layers3, Github, BookOpen, FileText } from 'lucide-react';
+import { Sparkles, Github, BookOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export function Header() {
   return (
@@ -21,14 +22,20 @@ export function Header() {
         >
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-primary shadow-glow relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <Layers3 className="w-7 h-7 text-primary-foreground relative z-10" />
+            <Sparkles className="w-7 h-7 text-primary-foreground relative z-10" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Image Similarity Analyzer
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                AI Emotion Recognition
+              </h1>
+              <Badge variant="secondary" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
+                <Sparkles className="w-3 h-3" />
+                AI Powered
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground hidden sm:block">
-              AI-powered comparison & deep learning analysis
+              Upload an image to detect emotions like Happy, Sad, Angry, and more
             </p>
           </div>
         </motion.div>
