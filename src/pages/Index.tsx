@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   RefreshCw, 
@@ -9,7 +9,9 @@ import {
   Meh, 
   AlertCircle, 
   Heart, 
-  Activity 
+  Activity,
+  Camera,
+  Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +30,10 @@ export default function Index() {
   const [image, setImage] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<EmotionResult | null>(null);
+  const [captureMode, setCaptureMode] = useState<'upload' | 'camera'>('upload');
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleDetectEmotion = async () => {
     if (!image) {
@@ -66,7 +72,66 @@ export default function Index() {
   const handleReset = () => {
     setImage(null);
     setResults(null);
+    stopCamera();
   };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user', width: 1280, height: 720 } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setIsCameraActive(true);
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast.error("Could not access camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      setIsCameraActive(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+          setImage(file);
+          stopCamera();
+          toast.success("Photo captured successfully!");
+        }
+      }, 'image/jpeg', 0.95);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (captureMode === 'camera' && !isCameraActive && !image) {
+      startCamera();
+    } else if (captureMode === 'upload') {
+      stopCamera();
+    }
+  }, [captureMode]);
 
   const getEmotionIcon = (emotion: string) => {
     const emotionLower = emotion.toLowerCase();
@@ -125,19 +190,83 @@ export default function Index() {
                 </p>
               </motion.div>
 
-              {/* Single Upload Zone */}
+              {/* Mode Selector */}
+              <motion.div
+                className="flex justify-center gap-4 mb-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <Button
+                  variant={captureMode === 'upload' ? 'default' : 'outline'}
+                  onClick={() => setCaptureMode('upload')}
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Image
+                </Button>
+                <Button
+                  variant={captureMode === 'camera' ? 'default' : 'outline'}
+                  onClick={() => setCaptureMode('camera')}
+                  className="gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Use Camera
+                </Button>
+              </motion.div>
+
+              {/* Upload or Camera View */}
               <motion.div
                 className="max-w-2xl mx-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                <ImageDropzone
-                  onImageSelect={setImage}
-                  selectedImage={image}
-                  label="Upload Face Image"
-                  disabled={isAnalyzing}
-                />
+                {captureMode === 'upload' ? (
+                  <ImageDropzone
+                    onImageSelect={setImage}
+                    selectedImage={image}
+                    label="Upload Face Image"
+                    disabled={isAnalyzing}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {!image ? (
+                      <div className="relative aspect-video rounded-2xl overflow-hidden border-4 border-purple-500/30 bg-muted/20">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                        {!isCameraActive && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                            <p className="text-muted-foreground">Starting camera...</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="aspect-video rounded-2xl overflow-hidden border-4 border-purple-500/30 bg-muted/20">
+                        <img
+                          src={URL.createObjectURL(image)}
+                          alt="Captured"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    {isCameraActive && !image && (
+                      <Button
+                        size="lg"
+                        onClick={capturePhoto}
+                        className="w-full gap-2"
+                      >
+                        <Camera className="w-5 h-5" />
+                        Capture Photo
+                      </Button>
+                    )}
+                  </div>
+                )}
               </motion.div>
 
               {/* CTA Button */}
